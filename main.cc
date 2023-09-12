@@ -3,9 +3,15 @@
 #include <string>
 #include <tuple>
 #include <algorithm>
+#include <unordered_map>
+#include <utility>
 using namespace std;
 
-int countDone = 0;
+int t_size;
+vector<char> alphabet;
+unordered_map<string, pair<vector<int>, vector<int>>> precomputed_values;
+
+int countdone;
 
 void debugTable(const vector<vector<int>> table) {
   for (auto v : table) {
@@ -24,21 +30,20 @@ void debugVector(const vector<int> vec) {
 pair<vector<int>, vector<int>> PrecomputeSingle(
     const string &row_string, // length t - 1 string
     const string &column_string, // length t - 1 string
-    const vector<int> &row_offset_vector, // length t offset vector
-    const vector<int> &column_offset_vector, // length t offset vector
-    int t) {
+    const vector<int> &row_offset_vector, // length t - 1 offset vector
+    const vector<int> &column_offset_vector) { // length t - 1 offset vector
   // table initialization
-  vector<vector<int>> table(t, vector<int>(t));
+  vector<vector<int>> table(t_size, vector<int>(t_size));
   table[0][0] = 0;
-  for (int i = 1; i < t; i++) {
-    table[0][i] = row_offset_vector[i] + table[0][i - 1];
-    table[i][0] = column_offset_vector[i] + table[i - 1][0];
+  for (int i = 1; i < t_size; i++) {
+    table[0][i] = row_offset_vector[i - 1] + table[0][i - 1];
+    table[i][0] = column_offset_vector[i - 1] + table[i - 1][0];
   }
 
   // table calculation
-  for (int row = 1; row < t; row++) {
-    for (int col = 1; col < t; col++) {
-      int t = (row_string[row - 1] == column_string[col - 1]) ? 0 : 1;
+  for (int row = 1; row < t_size; row++) {
+    for (int col = 1; col < t_size; col++) {
+      int t = (row_string[col - 1] == column_string[row - 1]) ? 0 : 1;
       int diagonal = table[row - 1][col - 1] + t;
       int vertical = table[row - 1][col] + 1;
       int horizontal = table[row][col - 1] + 1;
@@ -47,57 +52,63 @@ pair<vector<int>, vector<int>> PrecomputeSingle(
   }
 
   // returning the result row and column offset vectors
-  vector<int> row_offset_vector_output(t);
-  vector<int> column_offset_vector_output(t);
+  vector<int> row_offset_vector_output(t_size);
+  vector<int> column_offset_vector_output(t_size);
 
-  for (int i = 1; i < t; i++) {
-    row_offset_vector_output[i] = table[t - 1][i] - table[t - 1][i - 1];
-    column_offset_vector_output[i] = table[i][t - 1] - table[i - 1][t - 1];
+  for (int i = 1; i < t_size; i++) {
+    row_offset_vector_output[i] = table[t_size - 1][i] - table[t_size - 1][i - 1];
+    column_offset_vector_output[i] = table[i][t_size - 1] - table[i - 1][t_size - 1];
   }
+  countdone++;
 
-  countDone++;
+  string key = row_string + column_string;
+  for (auto v: row_offset_vector) key.append(to_string(v));
+  for (auto v: column_offset_vector) key.append(to_string(v));
+  precomputed_values.insert(make_pair(key, make_pair(row_offset_vector_output, column_offset_vector_output)));
+
+  // debug
+  cout << key << " ";
+  for (auto v: row_offset_vector_output) cout << to_string(v);
+  cout << " ";
+  for (auto v: column_offset_vector_output) cout << to_string(v);
+  cout << endl;
+
   return make_pair(row_offset_vector_output, column_offset_vector_output);
 }
 
 void PossibleOffsets(const string &rowstr, const string &colstr,
                     vector<int> row, vector<int> col,
-                    int kr, int kc, int t) {
+                    int kr, int kc) {
   if (kr == 0 && kc == 0) {
-    PrecomputeSingle(rowstr, colstr, row, col, t);
+    PrecomputeSingle(rowstr, colstr, row, col);
   } else if (kr == 0) {
     for (auto i : {-1, 0, 1}) {
       col.push_back(i);
-      PossibleOffsets(rowstr, colstr, row, col, kr, kc - 1, t);
+      PossibleOffsets(rowstr, colstr, row, col, kr, kc - 1);
+      col.pop_back();
     }
   } else {
     for (auto i : {-1, 0, 1}) {
       row.push_back(i);
-      PossibleOffsets(rowstr, colstr, row, col, kr - 1, kc, t);
+      PossibleOffsets(rowstr, colstr, row, col, kr - 1, kc);
+      row.pop_back();
     }
   }
 }
 
-void PossibleStringsOffsets(const vector<char> &alphabets,
-                            string rowstr, string colstr,
-                            int kr, int kc, int t) {
+void PossibleStringsOffsets(string rowstr, string colstr,
+                            int kr, int kc) {
   if (kr == 0 && kc == 0) {
-    PossibleOffsets(rowstr, colstr, {}, {}, t, t, t);
+    PossibleOffsets(rowstr, colstr, {}, {}, t_size - 1, t_size - 1);
   } else if (kr == 0) {
-    for (auto c : alphabets) {
-      colstr.push_back(c);
-      PossibleStringsOffsets(alphabets, rowstr, colstr, kr, kc - 1, t);
-    }
+    for (auto c : alphabet) PossibleStringsOffsets(rowstr, colstr + c, kr, kc - 1);
   } else {
-    for (auto c : alphabets) {
-      rowstr.push_back(c);
-      PossibleStringsOffsets(alphabets, rowstr, colstr, kr - 1, kc, t);
-    }
+    for (auto c : alphabet) PossibleStringsOffsets(rowstr + c, colstr, kr - 1, kc);
   }
 }
 
 int main(void) {
   int alphabet_size;
-  vector<char> alphabets;
   cout << "alphabet set size: ";
   cin >> alphabet_size;
 
@@ -105,14 +116,15 @@ int main(void) {
   for (int i = 0; i < alphabet_size; ++i) {
     char c;
     cin >> c;
-    alphabets.push_back(c);
+    alphabet.push_back(c);
   }
 
-  int t_size;
   cout << "t-block size: ";
   cin >> t_size;
 
-  PossibleStringsOffsets(alphabets, "", "", t_size - 1, t_size -1, t_size);
-  cout << countDone;
+  // PossibleStringsOffsets("", "", t_size - 1, t_size - 1);
+  PrecomputeSingle("AGT", "ACG", {1, 1, 0}, {0, -1, -1});
+  cout << countdone << endl;
+  cout << precomputed_values.size() << endl;
   return 0;
 }
