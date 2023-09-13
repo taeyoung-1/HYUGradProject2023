@@ -122,9 +122,12 @@ int main(void) {
   cout << "t-block size: ";
   cin >> t_size;
 
-  // PossibleStringsOffsets("", "", t_size - 1, t_size - 1);
-  PrecomputeSingle("AGT", "ACG", {1, 1, 0}, {0, -1, -1});
+  PossibleStringsOffsets("", "", t_size - 1, t_size - 1);
+  // PrecomputeSingle("AGT", "ACG", {1, 1, 0}, {0, -1, -1});
   cout << countdone << endl;
   cout << precomputed_values.size() << endl;
+  auto pair = (precomputed_values.find("GGGGGG111111")->second);
+  auto a = get<0>(pair);
+  for (auto v : a) cout << v; 
   return 0;
 }
