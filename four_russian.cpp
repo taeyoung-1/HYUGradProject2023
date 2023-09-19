@@ -12,11 +12,11 @@ using namespace std;
 // Tae Young's code start
 int t_size;
 vector<char> alphabet;
-unordered_map<string, pair<vector<int>, vector<int>>> precomputed_values;
+unordered_map<string, pair<vector<int>, vector<int> > > precomputed_values;
 
 int countdone;
 
-void debugTable(const vector<vector<int>> table) {
+void debugTable(const vector<vector<int> > table) {
   for (auto v : table) {
     for (auto i : v)
       cout << i << " ";
@@ -30,13 +30,13 @@ void debugVector(const vector<int> vec) {
   cout << endl;
 }
 
-pair<vector<int>, vector<int>> PrecomputeSingle(
+pair<vector<int>, vector<int> > PrecomputeSingle(
     const string &row_string, // length t - 1 string
     const string &column_string, // length t - 1 string
     const vector<int> &row_offset_vector, // length t - 1 offset vector
     const vector<int> &column_offset_vector) { // length t - 1 offset vector
   // table initialization
-  vector<vector<int>> table(t_size, vector<int>(t_size));
+  vector<vector<int> > table(t_size, vector<int>(t_size));
   table[0][0] = 0;
   for (int i = 1; i < t_size; i++) {
     table[0][i] = row_offset_vector[i - 1] + table[0][i - 1];
@@ -55,12 +55,13 @@ pair<vector<int>, vector<int>> PrecomputeSingle(
   }
 
   // returning the result row and column offset vectors
-  vector<int> row_offset_vector_output(t_size);
-  vector<int> column_offset_vector_output(t_size);
+  // t_size -> t_size -1 로 수정함
+  vector<int> row_offset_vector_output(t_size-1);
+  vector<int> column_offset_vector_output(t_size-1);
 
   for (int i = 1; i < t_size; i++) {
-    row_offset_vector_output[i] = table[t_size - 1][i] - table[t_size - 1][i - 1];
-    column_offset_vector_output[i] = table[i][t_size - 1] - table[i - 1][t_size - 1];
+    row_offset_vector_output[i-1] = table[t_size - 1][i] - table[t_size - 1][i - 1];
+    column_offset_vector_output[i-1] = table[i][t_size - 1] - table[i - 1][t_size - 1];
   }
   countdone++;
 
@@ -70,12 +71,13 @@ pair<vector<int>, vector<int>> PrecomputeSingle(
   precomputed_values.insert(make_pair(key, make_pair(row_offset_vector_output, column_offset_vector_output)));
 
   // debug
+  /*
   cout << key << " ";
   for (auto v: row_offset_vector_output) cout << to_string(v);
   cout << " ";
   for (auto v: column_offset_vector_output) cout << to_string(v);
   cout << endl;
-
+  */
   return make_pair(row_offset_vector_output, column_offset_vector_output);
 }
 
@@ -121,21 +123,23 @@ int compute_t_block_in_k(int k,int t, string P, string T) {
     int k_t = (k-1)/(t-1)+1;
     
     vector<int> row(t-1,+1); // first row의 offset은 모두 +1
-    vector<vector<int> > row_list(2*k_t + 1, vector<int>(t-1,+1)); // 필요한 row vector 개수: 2*k_t+1
+    vector<vector<int> > row_list(2*k_t + 2, vector<int>(t-1,+1)); // 필요한 row vector 개수: 2*k_t+2
 
-    for(int i=0; i<k_t+1; i++) { // row의 왼쪽 k+t 경계보다 0이 더 큰 경우
+    for(int i=0; i<min(k_t+1,n/(t-1)); i++) { // row의 왼쪽 k+t 경계보다 0이 더 큰 경우
         string sub_p = P.substr(i*(t-1),t-1);
         vector<int> col(t-1,+1); // 각 row의 첫번째 t-block의 column offset은 모두 +1
-        
+    	
         // row list[i] 사용한 compute 결과 row list[i]에 업데이트
-        for(int j=0; j<i+k_t+1; j++) {
+        for(int j=0; j<min(i+k_t+1,m/(t-1)); j++) {
             string sub_t = T.substr(j*(t-1),t-1);
             
             // precomputing 결과 가져오기
             string key = sub_t + sub_p;
-            for(auto v: row_list[j]) key.append(to_string(v));
+            for(auto v: row_list[j]) key.append(to_string(v)); 
             for(auto v: col) key.append(to_string(v));
-            auto value = precomputed_values.find(key)->second;
+	    
+	    if(precomputed_values.find(key) == precomputed_values.end()) return -1;
+	    auto value = precomputed_values.find(key)->second;
 
             // value 값을 row 값과 col 값으로 나누기............
             vector<int> row_value = get<0>(value);
@@ -146,30 +150,42 @@ int compute_t_block_in_k(int k,int t, string P, string T) {
             col = col_value;
         }
     }
-
-    int distance = (k_t+1)*(t-1);
+    
+    int distance = min(k_t+1,n/(t-1))*(t-1);
     for(auto v: row_list[0]) distance += v;
+
+    if(k_t+1 >= n/(t-1)) {
+	    // 마지막 t-block의 마지막 셀 값의 edit_distance
+	    cout << "row_list: ";
+	    for(int i=1; i<m/(t-1)-n/(t-1)+min(k_t+1,n/(t-1)); i++) {
+		    for(auto v: row_list[i]) {
+			    distance += v;
+			    cout << v << " ";
+		    }
+	    }
+	    cout << endl;
+	    return distance;
+    }
 
     for(int i=k_t+1; i<n/(t-1); i++) { // row의 왼쪽 k+t 경계가 0보다 큰 경우
         string sub_p = P.substr(i*(t-1),t-1);
         vector<int> col(t-1,+1); // 각 row의 첫번째 t-block의 column offset은 모두 +1
        
-        // row list[x] 사용한 compute 결과 row list[x-1]에 업데이트 (x은 1부터 계산)
-        for(int j=i-k_t; j<i+k_t+1; j++) {
-            // m이 k 영역 내에 있는 경우..............
-            // 1) ;j<min(i+k_t,m/(t-1)); 
-            // 2) if(m<(j+1)*(t-1)) { row_list[j-i+k_t+1] = [+1] * (t-1); break; }
+	// row list[x] 사용한 compute 결과 row list[x-1]에 업데이트 (x은 1부터 계산)
+        for(int j=i-k_t; j<min(i+k_t+1,m/(t-1)); j++) {
             string sub_t = T.substr(j*(t-1),t-1);
             
             // precomputing 결과 가져오기
             string key = sub_t + sub_p;
             for(auto v: row_list[j-i+k_t+1]) key.append(to_string(v));
             for(auto v: col) key.append(to_string(v));
-            auto value = precomputed_values.find(key)->second;
+            
+	    if(precomputed_values.find(key) == precomputed_values.end()) return -1;
+	    auto value = precomputed_values.find(key)->second;
 
             // value 값을 row 값과 col 값으로 나누기............
-            vector<int> row_value;
-            vector<int> col_value;
+            vector<int> row_value = get<0>(value);
+            vector<int> col_value = get<1>(value);
 
             // precomputing 결과 col, row_list에 저장
             row_list[j-i+k_t] = row_value;
@@ -182,9 +198,10 @@ int compute_t_block_in_k(int k,int t, string P, string T) {
     }
 
     // 마지막 t-block의 마지막 셀 값의 edit_distance
-    for(int i=0; i<2*k_t+1; i++) {
+    for(int i=1; i<m/(t-1)-n/(t-1)+min(k_t+1,n/(t-1)); i++) {
         for(auto v: row_list[i]) distance += v;
     }
+
     // n,m 이 t-block에 맞는 값으로 설정되있는 경우만 제대로 작동
     // 밑의 나머지 값들을 계산하는 코드 추가 필요............
     return distance;
@@ -208,20 +225,41 @@ int main(void) {
 
     cout << "t-block size: ";
     cin >> t_size;
-    cout << "k size: ";
-    cin >> k_size;
-    cout << "pattern: ";
-    cin >> pattern;
-    cout << "text: ";
-    cin >> text;
 
+    cout << endl;
+    cout << "Please wait until precomputing is done....." << endl;
     PossibleStringsOffsets("", "", t_size - 1, t_size - 1);
+    cout << "precomputing is done!!" << endl;
 
-    compute_t_block_in_k(k_size,t_size,pattern, text);
+    int edit_distance;
+    while(1) {
+	    cout << "Enter pattern or 'q' for exit: ";
+	    cin >> pattern;
+	    if(pattern == "q" || pattern == "Q") break;
+	    cout << "Enter text or 'q' for exit: ";
+	    cin >> text;
+	    if(text == "q" || text == "Q") break;
+	    cout << "Enter k size: ";
+	    cin >> k_size;
 
-    cout << "pattern: " << pattern << endl;
-    cout << "text: " << text << endl;
-    
+	    int diff = text.length() - pattern.length();
+	    while(k_size < abs(diff)) {
+		    cout << endl;
+		    cout << "k is smaller than m-n!! Re-enter k size: ";
+		    cin >> k_size;
+	    }
+	    edit_distance = compute_t_block_in_k(k_size,t_size,pattern, text);
+
+	    if(edit_distance == -1) {
+		    cout << "Text or Pattern contain unacceptable alphabets" << endl;
+		    continue;
+	    }
+	    cout << endl;
+	    cout << "pattern: " << pattern << endl;
+	    cout << "text: " << text << endl;
+	    cout << "distance: " << edit_distance << endl;
+	    cout << endl;
+    }
     return 0;
 }
 
