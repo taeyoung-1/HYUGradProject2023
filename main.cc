@@ -106,7 +106,6 @@ void PossibleStringsOffsets(string rowstr, string colstr,
   }
 }
 
-
 pair<vector<int>, vector<int>> getPair(
     const string &row_string, // length t - 1 string
     const string &column_string, // length t - 1 string
@@ -166,7 +165,7 @@ void overAllTest(int k, const string& T, const string& P) {
     }
   }
 
-  cout << "edit distance: " << accumulation;
+  cout << "edit distance: " << accumulation << endl;
 }
 
 int main(void) {
