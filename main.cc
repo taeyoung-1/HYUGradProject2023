@@ -5,13 +5,17 @@
 #include <algorithm>
 #include <unordered_map>
 #include <utility>
+#include <bits/stdc++.h>
+#include <boost/functional/hash.hpp>
+#include <boost/unordered_map.hpp>
+
 using namespace std;
 
 int t_size;
 vector<char> alphabet;
 unordered_map<string, pair<vector<int>, vector<int>>> precomputed_values;
-
-int countdone;
+boost::unordered_map<tuple<string, string, vector<int>, vector<int>>,
+                     pair<vector<int>, vector<int>>> precomputed_values_alt;
 
 void debugTable(const vector<vector<int>> table) {
   for (auto v : table) {
@@ -26,7 +30,24 @@ void debugVector(const vector<int> vec) {
     cout << i << " ";
 }
 
-pair<vector<int>, vector<int>> PrecomputeSingle(
+vector<char> offsetVectorToChars(vector<int> offsetVector) {
+  vector<char> result;
+  char temp = 0;
+  for (int i = 0; i < offsetVector.size(); ++i) {
+    if (offsetVector[i] == 1) temp |= 1;
+    else if (offsetVector[i] == -1) temp |= 2;
+    temp << 2;
+
+    if (i % 4 == 3) {
+      result.push_back(temp);
+      temp = 0;
+    }
+  }
+
+  return result;
+}
+
+void PrecomputeSingle(
     const string &row_string, // length t - 1 string
     const string &column_string, // length t - 1 string
     const vector<int> &row_offset_vector, // length t - 1 offset vector
@@ -58,21 +79,20 @@ pair<vector<int>, vector<int>> PrecomputeSingle(
     row_offset_vector_output[i] = table[t_size - 1][i + 1] - table[t_size - 1][i];
     column_offset_vector_output[i] = table[i + 1][t_size - 1] - table[i][t_size - 1];
   }
-  countdone++;
 
   string key = row_string + column_string;
+  // for (auto c: offsetVectorToChars(row_offset_vector)) key.push_back(c);
+  // for (auto c: offsetVectorToChars(column_offset_vector)) key.push_back(c);
   for (auto v: row_offset_vector) key.append(to_string(v));
   for (auto v: column_offset_vector) key.append(to_string(v));
   precomputed_values.insert(make_pair(key, make_pair(row_offset_vector_output, column_offset_vector_output)));
 
-  // debug
-  // cout << key << " ";
-  // for (auto v: row_offset_vector_output) cout << to_string(v);
-  // cout << " ";
-  // for (auto v: column_offset_vector_output) cout << to_string(v);
-  // cout << endl;
+  // auto keyTuple = make_tuple(row_string, column_string,
+  //                            row_offset_vector, column_offset_vector);
+  // precomputed_values_alt[keyTuple] =
+  //   make_pair(row_offset_vector_output, column_offset_vector_output);
 
-  return make_pair(row_offset_vector_output, column_offset_vector_output);
+  return;
 }
 
 void PossibleOffsets(const string &rowstr, const string &colstr,
@@ -112,6 +132,8 @@ pair<vector<int>, vector<int>> getPair(
     const vector<int> &row_offset_vector, // length t - 1 offset vector
     const vector<int> &column_offset_vector) { // length t - 1 offset vector
   string key = row_string + column_string;
+  // for (auto c: offsetVectorToChars(row_offset_vector)) key.push_back(c);
+  // for (auto c: offsetVectorToChars(column_offset_vector)) key.push_back(c);
   for (auto v : row_offset_vector) key.append(to_string(v));
   for (auto v : column_offset_vector) key.append(to_string(v));
   return precomputed_values.find(key)->second;
@@ -139,20 +161,12 @@ void overAllTest(int k, const string& T, const string& P) {
     fill(temp_col_offset_vec.begin(), temp_col_offset_vec.end(), 1);
     for (int col = 0; col < num_t_block_per_row; col++) {
       if (row + col < wing || row + col >= wing + col_blocks) continue;
+
       auto pair = getPair(T.substr((row + col - wing) * (t_size - 1), t_size - 1),
                           P.substr(row * (t_size - 1), t_size - 1),
                           (col == num_t_block_per_row - 1) ?
                             vector<int>(t_size - 1, 1) : prev_row_offset_vec[col + 1],
                           temp_col_offset_vec);
-
-      // cout << "row: " << row << ", col: " << col
-          //  << ", Tsub: " << T.substr((row + col - wing) * (t_size - 1), t_size - 1)
-          //  << ", Psub: " << P.substr(row * (t_size - 1), t_size - 1)
-          //  << ", row: ";
-      // debugVector(get<0>(pair));
-      // cout << ", col: ";
-      // debugVector(get<1>(pair));
-      // cout << endl;
 
       if (col == wing) {
         for (auto v : temp_col_offset_vec)
@@ -183,11 +197,12 @@ int main(void) {
   cout << "t-block size: ";
   cin >> t_size;
 
+  clock_t time_req = clock();
   PossibleStringsOffsets("", "", t_size - 1, t_size - 1);
-  overAllTest(3, "CCACAGGATTGAATCGAACCATAGTAAATAGGGTGACCAACAGAGTAGACG", "ACAGGATAGGGGATCGAGATAGGAAAACCGATGGAGCGAAGGGTGCGAGCG");
+  time_req = clock() - time_req;
+  cout << "Precomputing time: " << (float)time_req/CLOCKS_PER_SEC << endl;
 
-  // cout << countdone << endl;
-  // cout << precomputed_values.size() << endl;
-  // auto pair = (precomputed_values.find("GGGGGG111111")->second);
+  // overAllTest(3, "CCACAGGATTGAATCGAACCATAGTAAATAGGGTGACCAACAGAGTAGACG", "ACAGGATAGGGGATCGAGATAGGAAAACCGATGGAGCGAAGGGTGCGAGCG");
+
   return 0;
 }
