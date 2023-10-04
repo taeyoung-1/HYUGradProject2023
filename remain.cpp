@@ -40,6 +40,9 @@ vector<char> offsetVectorToChars(vector<int> offsetVector) {
     }
   }
 
+  if (temp != 0)
+    result.push_back(temp);
+
   return result;
 }
 
