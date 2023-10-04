@@ -119,6 +119,7 @@ pair<vector<int>, vector<int>> getPair(
 
 vector<int> flatten(const vector<vector<int>> &vec) {
   vector<int> flat_vec;
+  flat_vec.reserve(vec.size()*vec[0].size());
   for(auto& v : vec)
     flat_vec.insert(flat_vec.end(),v.begin(),v.end());
   return flat_vec;
@@ -143,8 +144,8 @@ vector<int> compute_distance(vector<int> row_vec, const vector<int> &col_vec, co
       table[row][col] = min(diagonal, min(vertical, horizontal));
     }
   }
-  vector<int> row_offset_vector_output(t_size - 1);
   
+  // remain_vector
   for (int col = 0; col < T.length(); col++) 
     row_vec[col] = table[P.length()][col+1] - table[P.length()][col];
   
@@ -154,28 +155,20 @@ vector<int> compute_distance(vector<int> row_vec, const vector<int> &col_vec, co
 // Assumption: n = n'(k - 1), m = m'(k - 1) for positives n' m'.
 void overAllTest(int k, const string& T, const string& P) {
   int wing = (k - 1) / (t_size - 1) + 1;
-  cout << "wing: " << wing << endl;
   int num_t_block_per_row = 2 * wing + 1;
-  cout << "number of t blocks per row: " << num_t_block_per_row << endl;
-
   int accumulation = 0;
   int m = P.length();
   int n = T.length();
   int row_blocks = m / (t_size - 1);
   int col_blocks = n / (t_size - 1);
 
-  // 저장해야 하는 col vector 개수
-  // 각 row의 마지막 t-block의 (row,col)은 기본적으로 (row, 2*wing)
-        // 2*wing == num_t_block_per_row - 1
-  // 마지막 row에서는 (row_blocks-1, ((col_blocks-1) - ((row_blocks-1)-wing)))
-  // 따라서 ((col_blocks-1) - ((row_blocks-1)-wing))와 (2*wing) 사이의 개수만큼 필요하다
-  int num_prev_col_blocks = wing - col_blocks + row_blocks + 1;
-
-  cout << "row_blocks: " << row_blocks << ", col_blocks: " << col_blocks << endl;
-
   vector<int> temp_col_offset_vec(t_size-1); // temporary column vector
   vector<vector<int>> prev_row_offset_vec(num_t_block_per_row, vector<int>(t_size-1,1)); // previous row
-  vector<vector<int>> prev_col_offset_vec(num_prev_col_blocks); // last column
+  
+  // text까지 t_block보다 k영역이 클 때, 마지막 t-block의 column 벡터 저장
+    // 저장해야 하는 벡터 개수 == wing + 1 - col_blocks + row_blocks, (0 <= col_blocks - row_blocks <= wing);
+  vector<int> prev_col_offset_vec;
+  prev_col_offset_vec.reserve((wing+1)*(t_size-1)); 
   fill(prev_row_offset_vec.begin(), prev_row_offset_vec.begin()+1, vector<int>(t_size-1, 0));
   
   for (int row = 0; row < row_blocks; row++) {
@@ -194,20 +187,13 @@ void overAllTest(int k, const string& T, const string& P) {
 
       // row의 마지막 t-block이 text까지의 마지막 t-block 영역인 경우 column vector 저장
       if(row + col == wing + col_blocks - 1) {
-        prev_col_offset_vec[row-(row_blocks-num_prev_col_blocks)] = pair.second;
+        prev_col_offset_vec.insert(prev_col_offset_vec.end(),pair.second.begin(),pair.second.end());
         break;
       }
     }
-    
     accumulation += t_size-1;
     for (auto v : prev_row_offset_vec[0]) accumulation += v;
   }
-
-  // 마지막 t-block 마지막 셀의 edit distance
-  for (int col=0; col<col_blocks-row_blocks+wing; col++) {
-    for (auto v : prev_row_offset_vec[col+1]) accumulation += v;
-  }
-
   // debug. 마지막 t-block 까지의 edit distance
   // cout << "distance: " << accumulation << endl;
 
@@ -217,34 +203,33 @@ void overAllTest(int k, const string& T, const string& P) {
 
   vector<int> col_remain_vector(col_remain, 1);
   vector<int> row_remain_vector(row_remain, 1);
+  
+  // prev_row_offset_vec을 1차원 벡터로 변환
+  vector<int> row_prev_vector;
+  row_prev_vector.reserve((col_blocks-row_blocks+wing+2)*(t_size-1));
+  for(int i=1; i<col_blocks-row_blocks+wing+1;i++) {
+    row_prev_vector.insert(row_prev_vector.end(),prev_row_offset_vec[i].begin(),prev_row_offset_vec[i].end());
+  }
 
   string sub_p = P.substr(row_blocks*(t_size-1),col_remain);
   string sub_t = T.substr(col_blocks*(t_size-1),row_remain);
-  
-  if (col_remain) { // pattern 나머지가 존재
-    string SUB_t = T.substr((row_blocks-wing-1)*(t_size-1),(col_blocks-row_blocks+wing+1)*(t_size-1));
-    vector<int> row_prev_vector = flatten(prev_row_offset_vec);
+  string SUB_t = T.substr((row_blocks-wing)*(t_size-1),(col_blocks-row_blocks+wing)*(t_size-1));
+             
+  if (row_remain) {
+    string SUB_p = P.substr(P.length()-prev_col_offset_vec.size()-col_remain,prev_col_offset_vec.size());
     
-    col_remain_vector = compute_distance(col_remain_vector,row_prev_vector,sub_p,SUB_t);
-  }
-  
-  if (row_remain) { // text 나머지가 존재
-    string SUB_p = P.substr((row_blocks-num_prev_col_blocks)*(t_size-1),(num_prev_col_blocks*(t_size-1)));
-    vector<int> col_prev_vector = flatten(prev_col_offset_vec);
+    row_remain_vector = compute_distance(row_remain_vector,prev_col_offset_vec, sub_t, SUB_p);
     
-    row_remain_vector = compute_distance(row_remain_vector,col_prev_vector, sub_t, SUB_p);
+    SUB_t += sub_t;
+    row_prev_vector.insert(row_prev_vector.end(),row_remain_vector.begin(),row_remain_vector.end());
   }
 
-  if(col_remain && row_remain) {
-    row_remain_vector = compute_distance(row_remain_vector,col_remain_vector, sub_t, sub_p);   
-    
+  if (col_remain) {
+    col_remain_vector = compute_distance(col_remain_vector,row_prev_vector,sub_p,SUB_t);
     for (auto v : col_remain_vector) accumulation += v;
-    for (auto v : row_remain_vector) accumulation += v;
   }
-  else if(col_remain)
-    for (auto v : col_remain_vector) accumulation += v;
-  else if(row_remain)
-    for (auto v : row_remain_vector) accumulation += v;
+
+  for (auto v : row_prev_vector) accumulation += v;
 
   cout << "edit distance: " << accumulation << endl;
 }
@@ -273,7 +258,7 @@ int main(void) {
 	  cout << "enter pattern: ";
 	  cin >> P;
 	  if(T == "q") return 0;
-	  overAllTest(6,T,P);
+	  overAllTest(4,T,P);
 
   }
   // cout << countdone << endl;
