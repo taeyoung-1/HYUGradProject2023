@@ -26,25 +26,6 @@ int compute_k_diff(const string& T, const string& P);
 // t-block 단위로 distance 계산
 int compute_russian(const string& T, const string& P);
 
-vector<char> offsetVectorToChars(vector<int> offsetVector) {
-  vector<char> result;
-  char temp = 0;
-  for (int i = 0; i < offsetVector.size(); ++i) {
-    if (offsetVector[i] == 1) temp = temp | 1;
-    else if (offsetVector[i] == -1) temp = temp | 2;
-    else temp = temp | 3;
-    temp = temp << 2;
-
-    if (i % 4 == 3) {
-      result.push_back(temp);
-      temp = 0;
-    }
-  }
-  if (temp != 0)
-    result.push_back(temp);
-
-  return result;
-}
 
 void debugTable(const vector<vector<int>> table) {
   for (auto v : table) {
@@ -94,8 +75,8 @@ pair<vector<int>, vector<int>> PrecomputeSingle(
   countdone++;
 
   string key = row_string + column_string;
-  for (auto c: offsetVectorToChars(row_offset_vector)) key += c;
-  for (auto c: offsetVectorToChars(column_offset_vector)) key += c;
+  for (auto v: row_offset_vector) key.append(to_string(v));
+  for (auto v: column_offset_vector) key.append(to_string(v));
   precomputed_values.insert(make_pair(key, make_pair(row_offset_vector_output, column_offset_vector_output)));
 
   // debug
@@ -145,8 +126,8 @@ pair<vector<int>, vector<int>> getPair(
     const vector<int> &row_offset_vector, // length t - 1 offset vector
     const vector<int> &column_offset_vector) { // length t - 1 offset vector
   string key = row_string + column_string;
-  for (auto c: offsetVectorToChars(row_offset_vector)) key += c;
-  for (auto c: offsetVectorToChars(column_offset_vector)) key += c;
+  for (auto v : row_offset_vector) key.append(to_string(v));
+  for (auto v : column_offset_vector) key.append(to_string(v));
   return precomputed_values.find(key)->second;
 }
 
@@ -357,33 +338,51 @@ int main(void) {
     accumulation = compute_basic(Text[i],Pattern[i]);
     out_file << accumulation << "\t";  
   }
-  duration<double, ratio<1,1000000>> time_basic = system_clock::now() - start_basic;
+  duration<double, ratio<1,1000>> time_basic = system_clock::now() - start_basic;
   out_file << endl;
-  out_file << "cost time: " << time_basic.count() << "nanosec" << endl;
-  
-  // k_difference method
+  out_file << "cost time: " << time_basic.count() << " msec" << endl;
+  out_file << endl;
+
+  // K-difference method
   system_clock::time_point start_k = system_clock::now();
   out_file << "----------K difference method----------" << endl;
   for(int i=0; i<Text.size(); i++) {
     accumulation = compute_k_diff(Text[i],Pattern[i]);
     out_file << accumulation << "\t";  
   }
-  duration<double, ratio<1,1000000>> time_k = system_clock::now() - start_k;
+  duration<double, ratio<1,1000>> time_k = system_clock::now() - start_k;
   out_file << endl;
-  out_file << "cost time: " << time_k.count() << "nanosec" << endl;
-  
+  out_file << "cost time: " << time_k.count() << " msec" << endl;
+  out_file << endl;
+
+  // Precomputing time  
+  out_file << "----------Precomputing time----------" << endl;
+  out_file << time_precompute.count() << " msec" << endl;
+  out_file << endl;
+
   // four_russians method
   system_clock::time_point start_russian = system_clock::now();
   out_file << "----------Four Russians method----------" << endl;
-  out_file << "precomputing time: " << time_precompute.count() << "msec" << endl;
   for(int i=0; i<Text.size(); i++) {
     accumulation = compute_russian(Text[i],Pattern[i]);
     out_file << accumulation << "\t";  
   }
-  duration<double, ratio<1,1000000>> time_russian = system_clock::now() - start_russian;
+  duration<double, ratio<1,1000>> time_russian = system_clock::now() - start_russian;
   out_file << endl;
-  out_file << "cost time: " << time_russian.count() << "nanosec" << endl;
-  
+  out_file << "cost time: " << time_russian.count() << " msec" << endl;
+  out_file << endl;
+
+  // K-difference and Four Russians method
+  system_clock::time_point start_k_russian = system_clock::now();
+  out_file << "----------K difference and Four Russians method----------" << endl;
+  for(int i=0; i<Text.size(); i++) {
+    accumulation = compute_k_and_russian(Text[i],Pattern[i]);
+    out_file << accumulation << "\t";
+  }
+  duration<double, ratio<1,1000>> time_k_russian = system_clock::now() - start_k_russian;
+  out_file << endl;
+  out_file << "cost time: " << time_k_russian.count() << " msec" << endl;
+ 
   out_file.close();
 
   return 0;
