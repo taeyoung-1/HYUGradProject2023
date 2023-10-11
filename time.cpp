@@ -13,7 +13,7 @@ using namespace chrono;
 #define MAX 2147483646
 #define NUM_CASE 50 // 계산하는 case의 개수
 #define T_SIZE 4    // t-block의 크기
-#define K 7         // k 영역의 크기
+#define K_SIZE 7         // k 영역의 크기
 
 int countdone;
 vector<char> alphabet = {'A', 'T', 'G', 'C'};
@@ -22,7 +22,7 @@ unordered_map<string, pair<vector<int>, vector<int>>> precomputed_values;
 // 가장 기본적인 distance 계산 방식. 모든 셀 하나씩 계산
 int compute_basic(const string& T, const string& P);
 // k 영역 내의 모든 셀에 대해 하나씩 distance 계산.
-int compute_k_diff(int _k, const string& T, const string& P);
+int compute_k_diff(const string& T, const string& P);
 // t-block 단위로 distance 계산
 int compute_russian(const string& T, const string& P);
 
@@ -169,28 +169,28 @@ int compute_basic(const string& T, const string& P) {
 
 int compute_k_diff(const string& T, const string& P) {
   vector<int> table;
-  table.reserve(2*K + 2);
+  table.reserve(2*K_SIZE + 2);
   
   // 초기 값 설정
-  table[K] = 0; // diff = 0
-  table[2*K+1] = MAX;
-  for(int col=1; col<K+1; col++) {
-    table[K-col] = col;  // diff = -1 ~ -k
-    table[K+col] = col;  // diff = 1 ~ k
+  table[K_SIZE] = 0; // diff = 0
+  table[2*K_SIZE+1] = MAX;
+  for(int col=1; col<K_SIZE+1; col++) {
+    table[K_SIZE-col] = col;  // diff = -1 ~ -k
+    table[K_SIZE+col] = col;  // diff = 1 ~ k
   }
   
   // 이전 row의 값을 통해 현재 row의 값 계산
   for(int row=1; row<P.length()+1; row++) {
-    int col_0 = row - K;
+    int col_0 = row - K_SIZE;
     if (col_0 > 0) { // table[0] 값 업데이트
       int t = (T[col_0-1] == P[row-1]) ? 0 : 1;
       table[0] = min(table[0]+t, table[1]+1);
     }
-    for(int col=max(1,K-row+1); col<2*K+1; col++) {
-      if(row+col-K > T.length()) {
+    for(int col=max(1,K_SIZE-row+1); col<2*K_SIZE+1; col++) {
+      if(row+col-K_SIZE > T.length()) {
         break;
       }
-      int t = (T[row+col-K-1] == P[row-1]) ? 0 : 1;
+      int t = (T[row+col-K_SIZE-1] == P[row-1]) ? 0 : 1;
       int diagonal = table[col] + t;
       int vertical = table[col+1] + 1;
       int horizontal = table[col-1] + 1;
@@ -200,7 +200,7 @@ int compute_k_diff(const string& T, const string& P) {
     }
   }
 
-  return table[T.length()-P.length()+K];
+  return table[T.length()-P.length()+K_SIZE];
 }
 vector<int> compute_distance(vector<int> row_vec, const vector<int> &col_vec, const string &T, const string &P) {
   // table initialization
@@ -232,14 +232,13 @@ vector<int> compute_distance(vector<int> row_vec, const vector<int> &col_vec, co
 // Assumption: n = n'(k - 1), m = m'(k - 1) for positives n' m'.
 int compute_russian(const string& T, const string& P) {
   int accumulation = 0;
-  int m = P.length();
-  int n = T.length();
+  int m = P.length()-1;
+  int n = T.length()-1;
   int row_blocks = m / (T_SIZE - 1);
   int col_blocks = n / (T_SIZE - 1);
-
+  
   vector<vector<int>> prev_row_offset_vec(col_blocks, vector<int>(T_SIZE-1,1)); // previous row
   vector<vector<int>> last_col_offset_vec(row_blocks, vector<int>(T_SIZE-1,1)); // last column
-  
   for (int row = 0; row < row_blocks; row++) {
     vector<int> col_vec = last_col_offset_vec[row];
     // col < wing+col_blocks - row 까지만 loop
@@ -339,7 +338,7 @@ int main(void) {
     accumulation = compute_basic(Text[i],Pattern[i]);
     out_file << accumulation << "\t";  
   }
-  duration<double, ratio<1,1000000000>> time_basic = system_clock::now() - start_basic;
+  duration<double, ratio<1,1000000>> time_basic = system_clock::now() - start_basic;
   out_file << endl;
   out_file << "cost time: " << time_basic.count() << "nanosec" << endl;
   
@@ -350,7 +349,7 @@ int main(void) {
     accumulation = compute_k_diff(Text[i],Pattern[i]);
     out_file << accumulation << "\t";  
   }
-  duration<double, ratio<1,1000000000>> time_k = system_clock::now() - start_k;
+  duration<double, ratio<1,1000000>> time_k = system_clock::now() - start_k;
   out_file << endl;
   out_file << "cost time: " << time_k.count() << "nanosec" << endl;
   
@@ -362,7 +361,7 @@ int main(void) {
     accumulation = compute_russian(Text[i],Pattern[i]);
     out_file << accumulation << "\t";  
   }
-  duration<double, ratio<1,1000000000>> time_russian = system_clock::now() - start_russian;
+  duration<double, ratio<1,1000000>> time_russian = system_clock::now() - start_russian;
   out_file << endl;
   out_file << "cost time: " << time_russian.count() << "nanosec" << endl;
   
