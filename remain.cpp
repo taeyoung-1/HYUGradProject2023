@@ -11,8 +11,6 @@ int t_size;
 vector<char> alphabet;
 unordered_map<string, pair<vector<int>, vector<int>>> precomputed_values;
 
-int countdone;
-
 void debugTable(const vector<vector<int>> table) {
   for (auto v : table) {
     for (auto i : v)
@@ -30,16 +28,16 @@ vector<char> offsetVectorToChars(vector<int> offsetVector) {
   vector<char> result;
   char temp = 0;
   for (int i = 0; i < offsetVector.size(); ++i) {
-    if (offsetVector[i] == 1) temp |= 1;
-    else if (offsetVector[i] == -1) temp |= 2;
-    temp << 2;
+    if (offsetVector[i] == 1) temp = temp | 1;
+    else if (offsetVector[i] == -1) temp = temp | 2;
+    else temp = temp | 3;
+    temp = temp << 2;
 
     if (i % 4 == 3) {
       result.push_back(temp);
       temp = 0;
     }
   }
-
   if (temp != 0)
     result.push_back(temp);
 
@@ -78,11 +76,10 @@ void PrecomputeSingle(
     row_offset_vector_output[i] = table[t_size - 1][i + 1] - table[t_size - 1][i];
     column_offset_vector_output[i] = table[i + 1][t_size - 1] - table[i][t_size - 1];
   }
-  countdone++;
 
   string key = row_string + column_string;
-  for (auto c: offsetVectorToChars(row_offset_vector)) key.push_back(c);
-  for (auto c: offsetVectorToChars(column_offset_vector)) key.push_back(c);
+  for (auto c: offsetVectorToChars(row_offset_vector)) key += c;
+  for (auto c: offsetVectorToChars(column_offset_vector)) key += c;
   // for (auto v: row_offset_vector) key.append(to_string(v));
   // for (auto v: column_offset_vector) key.append(to_string(v));
   precomputed_values.insert(make_pair(key, make_pair(row_offset_vector_output, column_offset_vector_output)));
@@ -127,8 +124,8 @@ pair<vector<int>, vector<int>> getPair(
     const vector<int> &row_offset_vector, // length t - 1 offset vector
     const vector<int> &column_offset_vector) { // length t - 1 offset vector
   string key = row_string + column_string;
-  for (auto c: offsetVectorToChars(row_offset_vector)) key.push_back(c);
-  for (auto c: offsetVectorToChars(column_offset_vector)) key.push_back(c);  
+  for (auto c: offsetVectorToChars(row_offset_vector)) key += c;
+  for (auto c: offsetVectorToChars(column_offset_vector)) key += c;  
   // for (auto v : row_offset_vector) key.append(to_string(v));
   // for (auto v : column_offset_vector) key.append(to_string(v));
   return precomputed_values.find(key)->second;
