@@ -26,25 +26,6 @@ int compute_k_diff(const string& T, const string& P);
 // t-block 단위로 distance 계산
 int compute_russian(const string& T, const string& P);
 
-vector<char> offsetVectorToChars(vector<int> offsetVector) {
-  vector<char> result;
-  char temp = 0;
-  for (int i = 0; i < offsetVector.size(); ++i) {
-    if (offsetVector[i] == 1) temp = temp | 1;
-    else if (offsetVector[i] == -1) temp = temp | 2;
-    else temp = temp | 3;
-    temp = temp << 2;
-
-    if (i % 4 == 3) {
-      result.push_back(temp);
-      temp = 0;
-    }
-  }
-  if (temp != 0)
-    result.push_back(temp);
-
-  return result;
-}
 
 void debugTable(const vector<vector<int>> table) {
   for (auto v : table) {
@@ -94,8 +75,8 @@ pair<vector<int>, vector<int>> PrecomputeSingle(
   countdone++;
 
   string key = row_string + column_string;
-  for (auto c: offsetVectorToChars(row_offset_vector)) key += c;
-  for (auto c: offsetVectorToChars(column_offset_vector)) key += c;
+  for (auto v: row_offset_vector) key.append(to_string(v));
+  for (auto v: column_offset_vector) key.append(to_string(v));
   precomputed_values.insert(make_pair(key, make_pair(row_offset_vector_output, column_offset_vector_output)));
 
   // debug
@@ -145,8 +126,8 @@ pair<vector<int>, vector<int>> getPair(
     const vector<int> &row_offset_vector, // length t - 1 offset vector
     const vector<int> &column_offset_vector) { // length t - 1 offset vector
   string key = row_string + column_string;
-  for (auto c: offsetVectorToChars(row_offset_vector)) key += c;
-  for (auto c: offsetVectorToChars(column_offset_vector)) key += c;
+  for (auto v : row_offset_vector) key.append(to_string(v));
+  for (auto v : column_offset_vector) key.append(to_string(v));
   return precomputed_values.find(key)->second;
 }
 
