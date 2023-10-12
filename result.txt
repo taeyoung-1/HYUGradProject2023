@@ -1,14 +1,14 @@
 ----------basic method----------
 14	35	37	31	36	16	13	28	29	13	14	35	37	31	36	16	13	28	29	13	14	35	37	31	36	16	13	28	29	13	14	35	37	31	36	16	13	28	29	13	14	35	37	31	36	16	13	28	29	
-cost time: 3.8162msec
+cost time: 4.0521msec
 ----------K difference method----------
 14	35	37	31	36	16	13	30	29	13	14	35	37	31	36	16	13	30	29	13	14	35	37	31	36	16	13	30	29	13	14	35	37	31	36	16	13	30	29	13	14	35	37	31	36	16	13	30	29	
-cost time: 0.916msec
+cost time: 0.9096msec
 ----------Four Russians method----------
-precomputing time: 15964.9msec
+precomputing time: 17546.4msec
 14	35	37	31	36	16	13	28	29	13	14	35	37	31	36	16	13	28	29	13	14	35	37	31	36	16	13	28	29	13	14	35	37	31	36	16	13	28	29	13	14	35	37	31	36	16	13	28	29	
-cost time: 35.3329msec
-----------Four Russians method----------
-precomputing time: 15964.9msec
+cost time: 30.4417msec
+----------Four Russians and K difference method----------
+precomputing time: 17546.4msec
 14	35	37	32	36	16	13	29	29	13	14	35	37	32	36	16	13	29	29	13	14	35	37	32	36	16	13	29	29	13	14	35	37	32	36	16	13	29	29	13	14	35	37	32	36	16	13	29	29	
-cost time: 10.5975msec
+cost time: 10.3244msec

@@ -40,6 +40,26 @@ void debugVector(const vector<int> vec) {
     cout << i << " ";
 }
 
+vector<char> offsetVectorToChars(vector<int> offsetVector) {
+  vector<char> result;
+  char temp = 0;
+  for (int i = 0; i < offsetVector.size(); ++i) {
+    if (offsetVector[i] == 1) temp = temp | 1;
+    else if (offsetVector[i] == -1) temp = temp | 2;
+    else temp = temp | 3;
+    temp = temp << 2;
+
+    if (i % 4 == 3) {
+      result.push_back(temp);
+      temp = 0;
+    }
+  }
+  if (temp != 0)
+    result.push_back(temp);
+
+  return result;
+}
+
 pair<vector<int>, vector<int>> PrecomputeSingle(
     const string &row_string, // length t - 1 string
     const string &column_string, // length t - 1 string
@@ -75,8 +95,8 @@ pair<vector<int>, vector<int>> PrecomputeSingle(
   countdone++;
 
   string key = row_string + column_string;
-  for (auto v: row_offset_vector) key.append(to_string(v));
-  for (auto v: column_offset_vector) key.append(to_string(v));
+  for (auto c: offsetVectorToChars(row_offset_vector)) key += c;
+  for (auto c: offsetVectorToChars(column_offset_vector)) key += c;
   precomputed_values.insert(make_pair(key, make_pair(row_offset_vector_output, column_offset_vector_output)));
 
   // debug
@@ -126,8 +146,8 @@ pair<vector<int>, vector<int>> getPair(
     const vector<int> &row_offset_vector, // length t - 1 offset vector
     const vector<int> &column_offset_vector) { // length t - 1 offset vector
   string key = row_string + column_string;
-  for (auto v : row_offset_vector) key.append(to_string(v));
-  for (auto v : column_offset_vector) key.append(to_string(v));
+  for (auto c: offsetVectorToChars(row_offset_vector)) key += c;
+  for (auto c: offsetVectorToChars(column_offset_vector)) key += c;
   return precomputed_values.find(key)->second;
 }
 
@@ -236,8 +256,6 @@ int compute_russian(const string& T, const string& P) {
   int n = T.length()-1;
   int row_blocks = m / (T_SIZE - 1);
   int col_blocks = n / (T_SIZE - 1);
-
-  if (n - m > K_SIZE || m - n > K_SIZE) return -1;
 
   vector<vector<int>> prev_row_offset_vec(col_blocks, vector<int>(T_SIZE-1,1)); // previous row
   vector<vector<int>> last_col_offset_vec(row_blocks, vector<int>(T_SIZE-1,1)); // last column
@@ -452,7 +470,7 @@ int main(void) {
 
   // four_russians and k_difference method
   system_clock::time_point start_k_russian = system_clock::now();
-  out_file << "----------Four Russians method----------" << endl;
+  out_file << "----------Four Russians and K difference method----------" << endl;
   out_file << "precomputing time: " << time_precompute.count() << "msec" << endl;
   for(int i=1; i<Text.size(); i++) {
     if(Text[i].length() < Pattern[i].length())
