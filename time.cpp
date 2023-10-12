@@ -255,7 +255,9 @@ int compute_russian(const string& T, const string& P) {
   int n = T.length()-1;
   int row_blocks = m / (T_SIZE - 1);
   int col_blocks = n / (T_SIZE - 1);
-  
+
+  if (n - m > K_SIZE || m - n > K_SIZE) return -1;
+
   vector<vector<int>> prev_row_offset_vec(col_blocks, vector<int>(T_SIZE-1,1)); // previous row
   vector<vector<int>> last_col_offset_vec(row_blocks, vector<int>(T_SIZE-1,1)); // last column
   for (int row = 0; row < row_blocks; row++) {
@@ -293,6 +295,89 @@ int compute_russian(const string& T, const string& P) {
     string SUB_p = P.substr(0,row_blocks*(T_SIZE-1));
     
     row_remain_vector = compute_distance(row_remain_vector,col_last_vector, sub_t, SUB_p);
+    
+    SUB_t += sub_t;
+    row_prev_vector.insert(row_prev_vector.end(),row_remain_vector.begin(),row_remain_vector.end());
+  }
+
+  if (col_remain) {
+    col_remain_vector = compute_distance(col_remain_vector,row_prev_vector,sub_p,SUB_t);
+    for (auto v : col_remain_vector) accumulation += v;
+  }
+
+  for (auto v : row_prev_vector) accumulation += v;
+
+  return accumulation;
+}
+
+int compute_k_and_russian(const string& T, const string& P) {
+  int wing = (K_SIZE - 1) / (T_SIZE - 1) + 1;
+  int num_t_block_per_row = 2 * wing + 1;
+  int accumulation = 0;
+  int m = P.length()-1;
+  int n = T.length()-1;
+  int row_blocks = m / (T_SIZE - 1);
+  int col_blocks = n / (T_SIZE - 1);
+
+  if (n - m > K_SIZE) return -1;
+
+  vector<int> temp_col_offset_vec(T_SIZE-1); // temporary column vector
+  vector<vector<int>> prev_row_offset_vec(num_t_block_per_row, vector<int>(T_SIZE-1,1)); // previous row
+  
+  // text까지 t_block보다 k영역이 클 때, 마지막 t-block의 column 벡터 저장
+    // 저장해야 하는 벡터 개수 == wing + 1 - col_blocks + row_blocks, (0 <= col_blocks - row_blocks <= wing);
+  vector<int> prev_col_offset_vec;
+  prev_col_offset_vec.reserve((wing+1)*(T_SIZE-1)); 
+  fill(prev_row_offset_vec.begin(), prev_row_offset_vec.begin()+1, vector<int>(T_SIZE-1, 0));
+  
+  for (int row = 0; row < row_blocks; row++) {
+    fill(temp_col_offset_vec.begin(), temp_col_offset_vec.end(), 1);
+    
+    // col < wing+col_blocks - row 까지만 loop
+    for (int col = max(0,wing-row); col < num_t_block_per_row; col++) {
+      auto pair = getPair(T.substr((row + col - wing) * (T_SIZE - 1), T_SIZE - 1),
+                          P.substr(row * (T_SIZE - 1), T_SIZE - 1),
+                          (col == num_t_block_per_row - 1) ?
+                            vector<int>(T_SIZE - 1, 1) : prev_row_offset_vec[col + 1],
+                          temp_col_offset_vec);
+
+      prev_row_offset_vec[col] = pair.first;
+      temp_col_offset_vec = pair.second;
+
+      // row의 마지막 t-block이 text까지의 마지막 t-block 영역인 경우 column vector 저장
+      if(row + col == wing + col_blocks - 1) {
+        prev_col_offset_vec.insert(prev_col_offset_vec.end(),pair.second.begin(),pair.second.end());
+        break;
+      }
+    }
+    accumulation += T_SIZE-1;
+    for (auto v : prev_row_offset_vec[0]) accumulation += v;
+  }
+  // debug. 마지막 t-block 까지의 edit distance
+  // cout << "distance: " << accumulation << endl;
+
+  // 나머지가 존재하는 경우
+  int col_remain = m%(T_SIZE-1);
+  int row_remain = n%(T_SIZE-1);
+
+  vector<int> col_remain_vector(col_remain, 1);
+  vector<int> row_remain_vector(row_remain, 1);
+  
+  // prev_row_offset_vec을 1차원 벡터로 변환
+  vector<int> row_prev_vector;
+  row_prev_vector.reserve((col_blocks-row_blocks+wing+2)*(T_SIZE-1));
+  for(int i=1; i<col_blocks-row_blocks+wing+1;i++) {
+    row_prev_vector.insert(row_prev_vector.end(),prev_row_offset_vec[i].begin(),prev_row_offset_vec[i].end());
+  }
+
+  string sub_p = P.substr(row_blocks*(T_SIZE-1),col_remain);
+  string sub_t = T.substr(col_blocks*(T_SIZE-1),row_remain);
+  string SUB_t = T.substr((row_blocks-wing)*(T_SIZE-1),(col_blocks-row_blocks+wing)*(T_SIZE-1));
+             
+  if (row_remain) {
+    string SUB_p = P.substr(P.length()-prev_col_offset_vec.size()-col_remain,prev_col_offset_vec.size());
+    
+    row_remain_vector = compute_distance(row_remain_vector,prev_col_offset_vec, sub_t, SUB_p);
     
     SUB_t += sub_t;
     row_prev_vector.insert(row_prev_vector.end(),row_remain_vector.begin(),row_remain_vector.end());
@@ -353,36 +438,52 @@ int main(void) {
   // basic method
   system_clock::time_point start_basic = system_clock::now();
   out_file << "----------basic method----------" << endl;
-  for(int i=0; i<Text.size(); i++) {
+  for(int i=1; i<Text.size(); i++) {
     accumulation = compute_basic(Text[i],Pattern[i]);
     out_file << accumulation << "\t";  
   }
-  duration<double, ratio<1,1000000>> time_basic = system_clock::now() - start_basic;
+  duration<double, milli> time_basic = system_clock::now() - start_basic;
   out_file << endl;
-  out_file << "cost time: " << time_basic.count() << "nanosec" << endl;
+  out_file << "cost time: " << time_basic.count() << "msec" << endl;
   
   // k_difference method
   system_clock::time_point start_k = system_clock::now();
   out_file << "----------K difference method----------" << endl;
-  for(int i=0; i<Text.size(); i++) {
+  for(int i=1; i<Text.size(); i++) {
     accumulation = compute_k_diff(Text[i],Pattern[i]);
     out_file << accumulation << "\t";  
   }
-  duration<double, ratio<1,1000000>> time_k = system_clock::now() - start_k;
+  duration<double, milli> time_k = system_clock::now() - start_k;
   out_file << endl;
-  out_file << "cost time: " << time_k.count() << "nanosec" << endl;
+  out_file << "cost time: " << time_k.count() << "msec" << endl;
   
   // four_russians method
   system_clock::time_point start_russian = system_clock::now();
   out_file << "----------Four Russians method----------" << endl;
   out_file << "precomputing time: " << time_precompute.count() << "msec" << endl;
-  for(int i=0; i<Text.size(); i++) {
+  for(int i=1; i<Text.size(); i++) {
     accumulation = compute_russian(Text[i],Pattern[i]);
     out_file << accumulation << "\t";  
   }
-  duration<double, ratio<1,1000000>> time_russian = system_clock::now() - start_russian;
+  duration<double, milli> time_russian = system_clock::now() - start_russian;
   out_file << endl;
-  out_file << "cost time: " << time_russian.count() << "nanosec" << endl;
+  out_file << "cost time: " << time_russian.count() << "msec" << endl;
+
+  // four_russians and k_difference method
+  system_clock::time_point start_k_russian = system_clock::now();
+  out_file << "----------Four Russians method----------" << endl;
+  out_file << "precomputing time: " << time_precompute.count() << "msec" << endl;
+  for(int i=1; i<Text.size(); i++) {
+    if(Text[i].length() < Pattern[i].length())
+      accumulation = compute_k_and_russian(Pattern[i],Text[i]);
+    else
+      accumulation = compute_k_and_russian(Text[i],Pattern[i]);
+    out_file << accumulation << "\t";  
+  }
+  duration<double, milli> time_k_russian = system_clock::now() - start_k_russian;
+  out_file << endl;
+  out_file << "cost time: " << time_k_russian.count() << "msec" << endl;
+
   
   out_file.close();
 
