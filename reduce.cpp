@@ -13,7 +13,7 @@ using namespace std;
 using namespace chrono;
 #define MAX 2147483646
 #define NUM_CASE 50 // 계산하는 case의 개수
-#define T_SIZE 4    // t-block의 크기
+#define T_SIZE 5    // t-block의 크기
 #define K_SIZE 7         // k 영역의 크기
 #define TEXT_LAST pow(4,T_SIZE-2)-1
 #define OFFSET_ALL_1 pow(16,T_SIZE-1)-1
@@ -71,7 +71,7 @@ void PrecomputeSingle(
   vector<vector<int>> table(T_SIZE, vector<int>(T_SIZE));
   table[0][0] = 0;
   int row_offset, col_offset;
-  // cout << "first: " << row_offset_vector << "  " << col_offset_vector << endl;
+  
   for (int i = 1; i < T_SIZE; i++) {
     // case '1': -1, case '2': 0, case '3': +1 
     row_offset = ((row_offset_vector >> 2*(T_SIZE-1 - i)) & 3) - 2;
@@ -79,19 +79,16 @@ void PrecomputeSingle(
     
     table[0][i] = row_offset + table[0][i - 1];
     table[i][0] = col_offset + table[i - 1][0];
-    // cout << "table[0][" << i << "]: " << table[0][i] << endl;
-    // cout << "table[" << i << "][0]: " << table[i][0] << endl;
   }
 
   // table calculation
   for (int row = 1; row < T_SIZE; row++) {
     for (int col = 1; col < T_SIZE; col++) {
       int t = (index >> ((T_SIZE-1)*(T_SIZE-1-row)+(T_SIZE-1-col))) & 1;
-      int diagonal = table[row - 1][col - 1] + t;
+      int diagonal = table[row - 1][col - 1] + (1-t);
       int vertical = table[row - 1][col] + 1;
       int horizontal = table[row][col - 1] + 1;
       table[row][col] = min(diagonal, min(vertical, horizontal));
-      // cout << "table[" << row << "][" << col << "]: " << table[row][col] << endl;
     }
   }
 
@@ -146,7 +143,6 @@ long int findSameIndex(int _text, int _pattern) {
 void PossibleStringsOffsets() {
   vector<long int> possibleString;
   possibleString.reserve(pow(2,4*(T_SIZE-1)-5));
-  // cout << "t1: " << possibleString.size() << endl;
   for (int pattern=0; pattern<VECTOR_ALL_1; ++pattern) {
     for (int text=0; text<TEXT_LAST; ++text) {
       long int sameIndex = findSameIndex(pattern,text);
@@ -155,11 +151,8 @@ void PossibleStringsOffsets() {
     }
   }
   long int count = 0;
-  // cout << "test: " << possibleString.size() << endl;
-  for (auto v : possibleString)  {
+  for (auto v : possibleString)
     PossibleOffsets(v, 0, 0, T_SIZE-1, T_SIZE-1);
-    // cout << ++count << endl;
-  }
 }
 
 int compute_basic(const string& T, const string& P) {
@@ -251,13 +244,6 @@ vector<int> compute_distance(const vector<int> &row_vec, const vector<int> &col_
   for (int col = 0; col < T.length(); col++) 
     result.push_back(table[P.length()][col+1] - table[P.length()][col]);
   
-  // cout << "distance: " << endl;
-  // for (auto v : table) {
-  //   for (auto u : v) {
-  //     cout << u << " ";
-  //   }
-  //   cout << endl;
-  // }
   return result;
 }
 
@@ -281,21 +267,15 @@ int compute_russian(const string& T, const string& P) {
     for (int col = 0; col < col_blocks; col++) {
       auto key = stringToLong((T.substr(col * (T_SIZE - 1), T_SIZE - 1)),
                           (P.substr(row * (T_SIZE - 1), T_SIZE - 1)));
-      // cout << "test: " << T.substr(col * (T_SIZE - 1), T_SIZE - 1) << " " << P.substr(row * (T_SIZE - 1), T_SIZE - 1) << endl;
-      // cout << key << " " << (prev_row_offset_vec[col] << 2*(T_SIZE-1)) + col_vec << endl;
       key = (key << 4*(T_SIZE-1)) + (prev_row_offset_vec[col] << 2*(T_SIZE-1)) + col_vec;
       auto value = precomputed_values.find(key)->second;
       
       prev_row_offset_vec[col] = (value >> 2*(T_SIZE-1));
       col_vec = value & (int)VECTOR_ALL_1;
-      
-      // cout << prev_row_offset_vec[col] << "  " << col_vec << endl;
-
     }
     last_col_offset_vec[row] = col_vec;
   }
   accumulation += row_blocks * (T_SIZE-1);
-  // cout << "acc: " << accumulation << endl;
   
   // 나머지가 존재하는 경우
   int col_remain = m%(T_SIZE-1);
@@ -322,31 +302,20 @@ int compute_russian(const string& T, const string& P) {
   string sub_p = P.substr(row_blocks*(T_SIZE-1),col_remain);
   string sub_t = T.substr(col_blocks*(T_SIZE-1),row_remain);
   string SUB_t = T.substr(0,col_blocks*(T_SIZE-1));
-  // cout << "col first: ";
-  // for (auto v : col_last_vector) cout << v << " ";
-  // cout << endl;
+  
   if (row_remain) {
     string SUB_p = P.substr(0,row_blocks*(T_SIZE-1));
-    // for (auto v : row_remain_vector) cout << v << " ";
-    // cout << endl;
     row_remain_vector = compute_distance(row_remain_vector,col_last_vector, sub_t, SUB_p);
     SUB_t += sub_t;
     row_prev_vector.insert(row_prev_vector.end(),row_remain_vector.begin(),row_remain_vector.end());
-    // cout << "row remain: ";
-    // for (auto v : row_prev_vector) cout << v << " ";
-    // cout << endl;
   }
 
   if (col_remain) {
     col_remain_vector = compute_distance(col_remain_vector,row_prev_vector,sub_p,SUB_t);
     for (auto v : col_remain_vector) accumulation += v;
-    // cout << "col remain: ";
-    // for (auto v : col_remain_vector) cout << v << " ";
-    // cout << endl;
   }
 
   for (auto v : row_prev_vector) accumulation += v;
-  // cout << "result: " << accumulation << endl;
   return accumulation;
 }
 
@@ -402,15 +371,12 @@ int compute_k_and_russian(const string& T, const string& P) {
     row_zero_vector = intToVector(prev_row_offset_vec[0]);
     
     for (auto v : row_zero_vector) accumulation += v;
-    // cout << "second: " << accumulation << endl;
   }
-  // debug. 마지막 t-block 까지의 edit distance
-  // cout << "distance: " << accumulation << endl;
   
   // 나머지가 존재하는 경우
   int col_remain = m%(T_SIZE-1);
   int row_remain = n%(T_SIZE-1);
-  // cout << "remain: " << m << " " << n << " " << col_remain << " " << row_remain << endl;
+  
   vector<int> col_remain_vector(col_remain, 1);
   vector<int> row_remain_vector(row_remain, 1);
   
@@ -450,25 +416,16 @@ int compute_k_and_russian(const string& T, const string& P) {
     
     SUB_t += sub_t;
     row_prev_vector.insert(row_prev_vector.end(),row_remain_vector.begin(),row_remain_vector.end());
-    // cout << "row remain: ";
-    // for (auto v : row_prev_vector) cout << v << " ";
-    // cout << endl;
   }
 
   if (col_remain) {
     col_remain_vector = compute_distance(col_remain_vector,row_prev_vector,sub_p,SUB_t);
     for (auto v : col_remain_vector) accumulation += v;
-    // cout << "col remain: ";
-    // for (auto v: col_remain_vector) cout << v << " ";
-    // cout << endl;
   }
-  // cout << "row_vector: " << vectorToInt(col_remain_vector) << endl;
+  
   for (auto v : row_prev_vector)  {
     accumulation += v;
-    // cout << "+v: " << v << " ";
   }
-  // cout << endl;
-  // cout << "third: " << accumulation << endl;
   return accumulation;
 }
 
